@@ -1,6 +1,6 @@
 
 <p align="center">
-  <a href="http://tangleapp.luxen.club/login" target="_blank"><img src="FrontendService/my-app/public/LOGO_PAIP.ico" width="200" alt="Logo de Luxen" /></a>
+  <a href="http://tangleapp.luxen.club/login" target="_blank"><img src="https://raw.githubusercontent.com/Luxury-Entertainment-CrowdTech/my-app/196acd9ca1fc9180f26d2f21aa38bc9d8dd2ee18/public/LOGO_PAIP.ico?token=GHSAT0AAAAAACMWD4TNIBQI6TC5LITJP6K4ZPGUG5Q" width="200" alt="Logo de Luxen" /></a>
 </p>
 
 <p align="center">
@@ -10,6 +10,8 @@
 <p align="center">
 <a href="#" target="_blank"><img src="https://img.shields.io/badge/version-1.0.0-blue.svg" alt="Version 1.0.0" /></a>
 <a href="#" target="_blank"><img src="https://img.shields.io/badge/estado-en%20desarrollo-yellow.svg" alt="Estado: en desarrollo" /></a>
+<a href="#" target="_blank"><img src="https://img.shields.io/badge/docker-compatible-blue.svg" alt="Compatible con Docker" /></a>
+<a href="#" target="_blank"><img src="https://img.shields.io/badge/tests-unitarios%20pasados-brightgreen.svg" alt="Tests Unitarias" /></a>
 </p>
 
 ## Descripción General
