@@ -5324,11 +5324,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\Usuario\\Desktop\\Proyectos\\AppTangle\\HomomorphicEncryptionService\\HomomorphicEncryptionService.csproj",
+      "projectUniqueName": "C:\\Users\\Usuario\\Desktop\\Proyectos\\Luxen\\Tangle-Microservicios\\HomomorphicEncryptionService\\HomomorphicEncryptionService.csproj",
       "projectName": "HomomorphicEncryptionService",
-      "projectPath": "C:\\Users\\Usuario\\Desktop\\Proyectos\\AppTangle\\HomomorphicEncryptionService\\HomomorphicEncryptionService.csproj",
+      "projectPath": "C:\\Users\\Usuario\\Desktop\\Proyectos\\Luxen\\Tangle-Microservicios\\HomomorphicEncryptionService\\HomomorphicEncryptionService.csproj",
       "packagesPath": "C:\\Users\\Usuario\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\Usuario\\Desktop\\Proyectos\\AppTangle\\HomomorphicEncryptionService\\obj\\",
+      "outputPath": "C:\\Users\\Usuario\\Desktop\\Proyectos\\Luxen\\Tangle-Microservicios\\HomomorphicEncryptionService\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"

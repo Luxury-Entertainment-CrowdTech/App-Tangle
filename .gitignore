@@ -2,8 +2,8 @@
 **/node_modules
 
 # Archivos de entorno local en cada servicio
-**/.env.local
-**/.env.*.local
+# **/.env.local
+# **/.env.*.local
 
 # Ignorar específicamente los archivos secrets del EmailService
 EmailService/.env.development.secrets
