@@ -29,6 +29,10 @@ const clients = [
     new Client({ nodes: ['https://api.testnet.shimmer.network'] })  // Nodo de Pruebas
 ];
 
+app.get('/', (req, res) => {
+    res.status(200).send('BlockchainService is running');
+});
+
 app.post('/upload', async (req, res) => {
     const { hash, usuarioId, azureBlobUrl } = req.body;
     console.log(usuarioId + '\n' + "Este es el usuario");
@@ -187,10 +191,15 @@ app.get('/retrieveByPhone/:phone/:userId', async (req, res) => {
     }
 });
 
-const PORT = process.env.PORT || 3005;
-app.listen(PORT, () => {
-    console.log(`BlockchainService running on port ${PORT}`);
-});
+module.exports = app;
+
+// Solo inicia el servidor si no estás en un entorno de prueba
+if (process.env.NODE_ENV !== 'test') {
+    const PORT = process.env.PORT || 3005;
+    app.listen(PORT, () => {
+        console.log(`BlockchainService running on port ${PORT}`);
+    });
+}
 
 // Función para recuperar un bloque de la red Tangle (versión paralela) - Se usa
 async function retrieveBlockFromNodesParallel(blockId) {

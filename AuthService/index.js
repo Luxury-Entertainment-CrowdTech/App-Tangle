@@ -74,7 +74,7 @@ app.post('/register', upload.single('faceImage'), async (req, res) => {
     if (!telefono || !usuario || !contrasena) {
         return res.status(400).send('Los campos obligatorios no están completos.');
     }
-    
+
     // Espera a que cada campo sea cifrado antes de continuar
     const encryptedNombre = await encryptText(String(nombre));
     const encryptedApellido = await encryptText(String(apellido));
@@ -110,7 +110,7 @@ app.post('/register', upload.single('faceImage'), async (req, res) => {
                 numeroTelefono: encryptedTelefono,
                 activo: true
             });
-            
+
             if (response.status === 201) {
                 res.status(201).send('Usuario registrado con éxito');
             } else {
@@ -184,7 +184,12 @@ app.get('/logout', (req, res) => {
     res.status(200).send('Sesión cerrada con éxito');
 });
 
-const PORT = process.env.PORT || 3004;
-app.listen(PORT, () => {
-    console.log(`AuthService running on port ${PORT}`);
-});
+module.exports = app;
+
+// Solo inicia el servidor si no estás en un entorno de prueba
+if (process.env.NODE_ENV !== 'test') {
+    const PORT = process.env.PORT || 3004;
+    app.listen(PORT, () => {
+        console.log(`AuthService running on port ${PORT}`);
+    });
+}

@@ -13,7 +13,7 @@ sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 // Endpoint para enviar el token por correo electrónico
 app.post('/sendEmail', async (req, res) => {
-    const { email, token } = req.body; 
+    const { email, token } = req.body;
     console.log(email, ",", token);
 
     let message = {
@@ -45,7 +45,12 @@ app.post('/sendEmail', async (req, res) => {
     }
 });
 
-const PORT = process.env.PORT || 3002;
-app.listen(PORT, () => {
-    console.log(`EmailService running on port ${PORT}`);
-});
+module.exports = app;
+
+// Solo inicia el servidor si no estás en un entorno de prueba
+if (process.env.NODE_ENV !== 'test') {
+    const PORT = process.env.PORT || 3002;
+    app.listen(PORT, () => {
+        console.log(`EmailService running on port ${PORT}`);
+    });
+}
