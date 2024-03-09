@@ -8,6 +8,7 @@
 # Ignorar específicamente los archivos secrets del EmailService
 EmailService/.env.development.secrets
 EmailService/.env.production.secrets
+EmailService/.env.test.secrets
 
 # Archivos de logs
 **/npm-debug.log*

@@ -12,6 +12,7 @@ if not os.path.isfile(out_log_file):
     open(out_log_file, 'a').close()
 
 import face_recognition
+from bson import ObjectId
 from dotenv import load_dotenv
 from flask import Flask, current_app, jsonify, request
 from pymongo import MongoClient
@@ -62,25 +63,30 @@ def register():
 
 @app.route('/verify', methods=['POST'])
 def verify():
-    if 'file' not in request.files:
-        return jsonify({'message': 'No file part'}), 400
+    face_id = request.form['faceId']  # Obtiene el faceId del formulario
     file = request.files['file']
-    if file.filename == '':
-        return jsonify({'message': 'No selected file'}), 400
-    if file:
-        unknown_image = face_recognition.load_image_file(file)
-        unknown_face_encoding = face_recognition.face_encodings(unknown_image)[0]
-        
-        # Buscar en la base de datos
-        users = users_collection.find({})
-        for user in users:
-            user_face_encoding = user['face_encoding']
-            results = face_recognition.compare_faces([user_face_encoding], unknown_face_encoding)
-            if True in results:
-                user_id = str(user['_id'])
-                return jsonify({'message': 'User verified', 'user_id': user_id}), 200
-        
-        return jsonify({'message': 'User not recognized'}), 401
+    if not file or not face_id:
+        return jsonify({'message': 'File and faceId are required'}), 400
+
+    unknown_image = face_recognition.load_image_file(file)
+    unknown_face_encodings = face_recognition.face_encodings(unknown_image)
+
+    if not unknown_face_encodings:
+        # No se encontraron rostros en la imagen
+        return jsonify({'message': 'No faces found in the image'}), 400
+
+    unknown_face_encoding = unknown_face_encodings[0]
+
+    user = users_collection.find_one({'_id': ObjectId(face_id)})
+    if user and 'face_encoding' in user:
+        known_face_encoding = user['face_encoding']
+        match = face_recognition.compare_faces([known_face_encoding], unknown_face_encoding)
+        if match[0]:
+            return jsonify({'message': 'User verified', 'user_id': str(user['_id'])}), 200
+        else:
+            return jsonify({'message': 'Face not recognized'}), 401
+    else:
+        return jsonify({'message': 'User not found'}), 404
 
 if __name__ == '__main__':
     app.run(debug=True, port=3007)

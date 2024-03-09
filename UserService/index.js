@@ -71,7 +71,7 @@ app.post('/updateProfile', async (req, res) => {
 
     try {
         const { userId, nombre, apellido, email, usuario, numeroTelefono } = req.body;
-        console.log( userId, nombre, apellido, email, usuario, numeroTelefono);
+        console.log(userId, nombre, apellido, email, usuario, numeroTelefono);
 
         // Asumiendo que tienes funciones para encriptar y desencriptar
         // que serían similares a 'encryptText' y 'decryptText' que ya usas.
@@ -174,11 +174,12 @@ app.post('/createUser', async (req, res) => {
     console.log("Solicitud recibida en /register para UserService");
     // Lógica para crear un nuevo usuario
     // const { token, nombre, apellido, email, usuario, contrasena, numeroTelefono, activo } = req.body;
-    const { faceId, nombre, apellido, email, usuario, contrasena, numeroTelefono, activo } = req.body;
+    const { faceId, hash3, nombre, apellido, email, usuario, contrasena, numeroTelefono, activo } = req.body;
     console.log(faceId + "Este es el faceId");
     try {
         const nuevoUsuario = new Usuario({
             faceId,
+            hash3,
             nombre,
             apellido,
             email,
@@ -211,8 +212,24 @@ app.get('/getUserByToken/:token', async (req, res) => {
     }
 });
 
+app.get('/getUserByHash3/:hash3', async (req, res) => {
+    try {
+        const { hash3 } = req.params;
+        const user = await Usuario.findOne({ hash3 });
+        if (user) {
+            res.json(user);
+        } else {
+            res.status(404).send('Usuario no encontrado');
+        }
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Error en el servidor');
+    }
+});
+
 // Nuevo endpoint para obtener todos los usuarios
 app.get('/getAllUsers', async (req, res) => {
+    console.log("Entró al endpoint /getAllUsers");
     try {
         const users = await Usuario.find({}).select('-contrasena -token'); // Excluye campos sensibles
         if (!users || users.length === 0) {
