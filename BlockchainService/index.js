@@ -95,7 +95,6 @@ app.get('/retrieve/:blockId', async (req, res) => {
     console.log(blockId + '\n' + "Este es el blockId");
 
     try {
-        //const transaccion = await TransaccionesTangle.findOne({ blockId }).populate('usuarioId');
         const transaccion = await TransaccionesTangle.findOne({ blockId });
         if (!transaccion) {
             return res.status(404).send('Transacción no encontrada');
@@ -133,6 +132,14 @@ app.get('/retrieveByPhone/:phone/:userId', async (req, res) => {
     console.log("Entro a retrieveByPhone");
     const { phone, userId } = req.params;
     console.log(phone + '\n' + "Este es el phone" + '\n' + userId + '\n' + "Este es el userId");
+
+    // Validar el userId para asegurarse de que es un ObjectID de MongoDB válido
+    if (!/^[0-9a-fA-F]{24}$/.test(userId)) {
+        // Si userId no cumple con el patrón esperado de un ObjectID de MongoDB, maneja el error adecuadamente
+        console.error('Identificador de usuario inválido:', userId);
+        return res.status(400).send('Identificador de usuario inválido.');
+    }
+
     try {
         // Obtener los detalles del usuario del otro microservicio
         const userInfoResponse = await axios.get(`${userServiceURL}/getUserInfo/${userId}`);
@@ -142,7 +149,7 @@ app.get('/retrieveByPhone/:phone/:userId', async (req, res) => {
         if (userInfo.numeroTelefono !== phone) {
             return res.status(404).send('Número de teléfono no coincide con el usuario.');
         }
-        
+
         // Buscar transacciones en la base de datos para el usuarioId dado
         const transacciones = await TransaccionesTangle.find({ usuarioId: userId });
         console.log(transacciones + '\n' + "Estas son las transacciones");
@@ -156,9 +163,6 @@ app.get('/retrieveByPhone/:phone/:userId', async (req, res) => {
             try {
                 // Recuperar el bloque desde la red Tangle usando la función existente
                 const fetchedBlock = await retrieveBlockFromNodesParallel(transaccion.blockId);
-
-                // Aquí puedes procesar fetchedBlock según sea necesario
-                // Por ejemplo, puedes convertir la información del bloque a un formato específico
 
                 return {
                     dbData: {

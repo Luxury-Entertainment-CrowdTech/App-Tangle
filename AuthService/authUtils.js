@@ -14,16 +14,18 @@ const axiosInstance = axios.create({
 });
 
 // Función para generar un token aleatorio
-function generateRandomToken() {
-    const tokenLength = 20; // Longitud deseada del token
+function generateSecureToken() {
+    const tokenLength = 20;
     const possibleCharacters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=';
-    
     let token = '';
+
+    // Generar un buffer de bytes aleatorios criptográficamente seguros
+    let randomBytes = crypto.randomBytes(tokenLength);
+
     for (let i = 0; i < tokenLength; i++) {
-        const randomIndex = Math.floor(Math.random() * possibleCharacters.length);
+        const randomIndex = randomBytes[i] % possibleCharacters.length;
         token += possibleCharacters[randomIndex];
     }
-
     return token;
 }
 
@@ -81,7 +83,7 @@ async function decryptText(encryptedText) {
 }
 
 module.exports = {
-    generateRandomToken,
+    generateSecureToken,
     encryptToken,
     sendTokenByEmail,
     encryptText,

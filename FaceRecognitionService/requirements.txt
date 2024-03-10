@@ -2,3 +2,4 @@ face_recognition
 Flask
 python-dotenv
 pymongo
+Flask-WTF

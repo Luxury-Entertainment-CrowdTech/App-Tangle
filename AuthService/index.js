@@ -6,14 +6,16 @@ const multer = require('multer');
 const path = require('path');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
-const { generateRandomToken, encryptToken, sendTokenByEmail, encryptText, decryptText, generateAccessToken } = require('./authUtils');
+const { generateSecureToken, encryptToken, sendTokenByEmail, encryptText, decryptText, generateAccessToken } = require('./authUtils');
 const axios = require('axios');
 const fs = require('fs');
 const FormData = require('form-data');
 
 // Crea el directorio de uploads si no existe
 const uploadsDir = path.join(__dirname, 'uploads');
-fs.existsSync(uploadsDir) || fs.mkdirSync(uploadsDir);
+if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+}
 
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
@@ -24,13 +26,28 @@ const storage = multer.diskStorage({
     }
 });
 
-// const upload = multer({ dest: 'uploads/' }); // Configura multer para guardar archivos subidos
+// Configuración de Multer
 const upload = multer({
     storage: storage,
     limits: {
-        fileSize: 8 * 1024 * 1024 * 1024, // 8 GB
+        fileSize: 5 * 1024 * 1024 * 1024, // 8 GB
     }
 });
+
+// Middleware para manejar errores de Multer, incluyendo el límite de tamaño de archivo
+function multerErrorHandler(err, req, res, next) {
+    if (err instanceof multer.MulterError) {
+        if (err.code === 'LIMIT_FILE_SIZE') {
+            return res.status(400).send('El archivo supera el límite de tamaño permitido de 5 GB.');
+        }
+        // Otros errores de Multer
+        return res.status(500).send(err.message);
+    } else if (err) {
+        // Errores no relacionados con Multer
+        return res.status(500).send('Error al procesar la solicitud.');
+    }
+    next();
+}
 
 // Lista de orígenes permitidos
 const whitelist = [
@@ -62,8 +79,9 @@ const userServiceURL = process.env.USER_SERVICE_URL;
 const app = express();
 app.use(cors(corsOptions)); // Habilitar CORS
 app.use(cookieParser());
-app.use(express.json({ limit: '8gb' }));
-app.use(express.urlencoded({ limit: '8gb', extended: true }));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(multerErrorHandler);
 
 app.use((req, res, next) => {
     res.header("Access-Control-Allow-Origin", "*"); // o en lugar de "*", especifica los dominios permitidos
@@ -186,7 +204,7 @@ app.post('/login', async (req, res) => {
 
 app.post('/verify-face', upload.single('faceImage'), async (req, res) => {
     const faceId = req.body.faceId; // Obtiene el faceId del cuerpo de la solicitud
-    // const user = req.body.user;
+    
     const userId = req.body.userId;
     const usuarioDescifrado = req.body.usuarioDescifrado;
     console.log(faceId + " :Este es el faceId");
@@ -231,56 +249,6 @@ app.post('/verify-face', upload.single('faceImage'), async (req, res) => {
         }
         // Otros errores no manejados por el microservicio de Python serán tratados como errores del servidor
         return res.status(500).json({ message: 'Error en el servidor.' });
-    }
-});
-
-app.post('/login', async (req, res) => {
-    console.log("Solicitud recibida en /login")
-    // Aquí trasladas la lógica para iniciar sesión desde server.js
-    // const { usuario, contrasena, token } = req.body;
-    // console.log(usuario, contrasena, token);
-    //const hash = crypto.createHash('sha256').update(contrasena).digest('hex');
-    // Verificar si el token proporcionado es válido
-    // const encryptedToken = encryptToken(token);
-    const { usuario, contrasena } = req.body;
-
-    if (!req.file) {
-        return res.status(400).send('Imagen de rostro requerida');
-    }
-    try {
-        // Realiza una solicitud al UserService para obtener el usuario por token
-        const userResponse = await axios.get(`${userServiceURL}/getUserByToken/${encryptedToken}`);
-        const user = userResponse.data;
-        //console.log(user);
-        //console.log(user._id);
-        if (user) {
-            // Aquí asumimos que tus funciones de descifrado devuelven una promesa
-            const usuarioDescifrado = await decryptText(user.usuario);
-            const contrasenaDescifrada = await decryptText(user.contrasena);
-
-            const contrasenaString = String(contrasenaDescifrada); // Esto se utiliza para poder hacer una cadena todas las contraseñas y poder comparlas luego
-
-            if ( /*user.contrasena*/ contrasenaString === contrasena && /*user.usuario*/usuarioDescifrado === usuario) {
-                console.log("Entro");
-                const accessToken = generateAccessToken(usuarioDescifrado, user._id);
-                console.log(accessToken + "Este es el token");
-                res.cookie('token', accessToken, { httpOnly: true });
-                console.log(user._id + "Este es el id del usuario")
-                return res.status(200).json({
-                    message: 'Inicio de sesión exitoso',
-                    token: accessToken,
-                    userId: user._id  // Envía el _id del usuario
-                });
-            } else {
-                return res.status(401).json({ message: 'Credenciales inválidas' });
-            }
-        } else {
-            res.status(401).json({ message: 'No existe el Usuario' });
-        }
-
-    } catch (err) {
-        console.error(err);
-        res.status(err.response?.status || 500).json({ message: err.message || 'Error en el servidor' });
     }
 });
 
