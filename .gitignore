@@ -8,6 +8,11 @@
 # Ignorar específicamente los archivos secrets del EmailService
 EmailService/.env.development.secrets
 EmailService/.env.production.secrets
+EmailService/.env.test.secrets
+
+# Ignora todo dentro de los directorios de uploads pero mantiene la carpeta
+AuthService/uploads/*
+StorageService/uploads/*
 
 # Archivos de logs
 **/npm-debug.log*

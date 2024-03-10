@@ -91,7 +91,7 @@ app.post('/upload', async (req, res) => {
 
 app.get('/retrieve/:blockId', async (req, res) => {
     console.log("Entro a retrieve");
-    const {blockId} = req.params.blockId;
+    const { blockId } = req.params;
     console.log(blockId + '\n' + "Este es el blockId");
 
     try {
@@ -108,7 +108,7 @@ app.get('/retrieve/:blockId', async (req, res) => {
             return res.status(400).send('Invalid block payload or block not found');
         }
 
-        const {payload} = fetchedBlock.payload;
+        const payload = fetchedBlock.payload;
         const encryptedFileDataBase64 = hexToUtf8(payload.data);
 
         // Solicitar información del usuario al UserService
