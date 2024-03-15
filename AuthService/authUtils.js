@@ -6,12 +6,13 @@ const jwt = require('jsonwebtoken');
 const encryptionServiceURL = process.env.ENCRYPTION_SERVICE_URL;
 const emailServiceURL = process.env.EMAIL_SERVICE_URL;
 
-// Crear una instancia de Axios con un agente HTTPS que ignora los errores de certificado SSL
+// Crea una instancia de Axios específicamente para entorno de producción o desarrollo
 const axiosInstance = axios.create({
-    httpsAgent: new https.Agent({ 
-        rejectUnauthorized: false
-    })
-});
+    httpsAgent: new https.Agent({
+      rejectUnauthorized: process.env.NODE_ENV === 'production'
+    }),
+    timeout: 300000, // Tiempo de espera de 10 segundos
+  });
 
 // Función para generar un token aleatorio
 function generateSecureToken() {
@@ -59,28 +60,51 @@ function generateAccessToken(username, userId) {  // Asegúrate de incluir userI
 async function encryptText(text) {
     console.log('Request body for encryption:', text);
     try {
-        const response = await axiosInstance.post(`${encryptionServiceURL}/Encryption/encrypt`, JSON.stringify(text), {
-            headers: { 'Content-Type': 'application/json' }
+        const response = await axiosInstance.post(`${process.env.ENCRYPTION_SERVICE_URL}/Encryption/encrypt`, {
+          PlainText: text
+        }, {
+          headers: { 'Content-Type': 'application/json' }
         });
-
-        return response.data; // El texto cifrado
-    } catch (error) {
-        console.error('Error al encriptar el texto:', error);
-        throw error;
-    }
+        // console.log('Encryption response:', response.data.encryptedText);
+        return response.data.encryptedText;
+      } catch (error) {
+        console.error('Error during encryption:', error);
+        // Manejo específico de errores, puede ser adaptado según necesidades
+        if (error.response) {
+          console.error('Error data:', error.response.data);
+        }
+        throw new Error('Failed to encrypt text');
+      }
 }
 
 async function decryptText(encryptedText) {
     try {
-        const response = await axiosInstance.post(`${encryptionServiceURL}/Encryption/decrypt`, JSON.stringify(encryptedText), { 
-            headers: { 'Content-Type': 'application/json' } 
+        const response = await axiosInstance.post(`${process.env.ENCRYPTION_SERVICE_URL}/Encryption/decrypt`, {
+          CipherTextString: encryptedText
+        }, {
+          headers: { 'Content-Type': 'application/json' }
         });
-        return response.data; // El texto desencriptado
-    } catch (error) {
-        console.error('Error al desencriptar el texto:', error);
-        throw error;
-    }
+        console.log('Decryption response:', response.data.plainText);
+        return response.data.plainText;
+      } catch (error) {
+        console.error('Error during decryption:', error);
+        throw new Error('Failed to decrypt text');
+      }
 }
+
+// Ejemplo de cómo utilizar las funciones
+// async function runEncryptionDecryptionTest() {
+//     try {
+//       const encryptedText = await encryptText('Hello, World!');
+//     //   console.log('Encrypted text:', encryptedText);
+//       const decryptedText = await decryptText(encryptedText);
+//       console.log('Decrypted text:', decryptedText);
+//     } catch (error) {
+//       console.error('An error occurred:', error.message);
+//     }
+//   }
+  
+// runEncryptionDecryptionTest();
 
 module.exports = {
     generateSecureToken,

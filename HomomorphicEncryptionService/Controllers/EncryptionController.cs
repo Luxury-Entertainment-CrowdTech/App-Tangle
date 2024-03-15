@@ -10,6 +10,7 @@ namespace HomomorphicEncryptionService.Controllers
     [Route("[controller]")]
     public class EncryptionController : Controller
     {
+        private readonly ILogger<EncryptionController> _logger;
         private Encryptor encryptor;
         private Decryptor decryptor;
         private KeyGenerator keyGenerator;
@@ -20,8 +21,9 @@ namespace HomomorphicEncryptionService.Controllers
         private IntegerEncoder encoder;
         private static object instance;
 
-        public EncryptionController()
+        public EncryptionController(ILogger<EncryptionController> logger)
         {
+            _logger = logger;
             // Configurar los parámetros del cifrado homomórfico
             parms = new EncryptionParameters(SchemeType.BFV);
             parms.PolyModulusDegree = 4096;
@@ -110,20 +112,35 @@ namespace HomomorphicEncryptionService.Controllers
                 return Convert.ToBase64String(secretKeyStream.ToArray());
             }
         }
-        public static EncryptionController GetInstance()
+        // public static EncryptionController GetInstance()
+        // {
+        //     if (instance == null)
+        //     {
+        //         instance = new EncryptionController();
+        //     }
+        //     return (EncryptionController)instance;
+        // }
+
+        [HttpGet("/")]
+        public IActionResult Index()
         {
-            if (instance == null)
-            {
-                instance = new EncryptionController();
-            }
-            return (EncryptionController)instance;
+            _logger.LogInformation("Accessing the index route of Homomorphic Encryption Service.");
+            return Ok("Homomorphic Encryption Service is running.");
         }
 
+        public class EncryptRequest
+{
+    public string PlainText { get; set; }
+}
+
         [HttpPost("encrypt")]
-        public ActionResult<string> Encrypt([FromBody] string plainText)
+        public ActionResult<string> Encrypt([FromBody] EncryptRequest request)
         {
             try
             {
+                var plainText = request.PlainText;
+                _logger.LogInformation($"Attempting to encrypt data: {plainText}");
+                
                 byte[] bytes = Encoding.UTF8.GetBytes(plainText);
 
                 // Asegúrate de que los datos sean del tamaño adecuado
@@ -149,20 +166,31 @@ namespace HomomorphicEncryptionService.Controllers
                     }
                 }
 
-                return encryptedString.ToString().TrimEnd('|');
+                _logger.LogInformation("Data encrypted successfully.");
+                // return encryptedString.ToString().TrimEnd('|');
+                var result = new { encryptedText = encryptedString.ToString().TrimEnd('|') };
+                return Ok(result);
             }
             catch (Exception e)
             {
+                _logger.LogError(e, "Error while encrypting data.");
                 Console.WriteLine(e.ToString());
                 return StatusCode(500, "Error en la encriptación");
             }
         }
 
+public class DecryptRequest
+{
+    public string CipherTextString { get; set; }
+}
+
         [HttpPost("decrypt")]
-        public ActionResult<string> Decrypt([FromBody] string cipherTextString)
+        public ActionResult<string> Decrypt([FromBody] DecryptRequest request)
         {
             try
             {
+                var cipherTextString = request.CipherTextString;
+                _logger.LogInformation($"Attempting to decrypt data: {cipherTextString}");
                 string[] encryptedBlocks = cipherTextString.Split('|');
                 byte[] decryptedBytes = new byte[encryptedBlocks.Length * 8];
 
@@ -187,10 +215,14 @@ namespace HomomorphicEncryptionService.Controllers
                     Array.Resize(ref decryptedBytes, nullIndex);
                 }
 
-                return Encoding.UTF8.GetString(decryptedBytes);
+                _logger.LogInformation("Data decrypted successfully.");
+                // return Encoding.UTF8.GetString(decryptedBytes);
+                var result = new { plainText = Encoding.UTF8.GetString(decryptedBytes) };
+                return Ok(result);
             }
             catch (Exception e)
             {
+                _logger.LogError(e, "Error while decrypting data.");
                 Console.WriteLine($"Error al desencriptar texto: {e.ToString()}");
                 return StatusCode(500, "Error en el descifrado");
             }

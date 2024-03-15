@@ -49,45 +49,14 @@ function multerErrorHandler(err, req, res, next) {
     next();
 }
 
-// Lista de orígenes permitidos
-const whitelist = [
-    process.env.CLIENT_REACT_URL,
-    process.env.APP_TANGLE_LOCAL,
-    process.env.APP_TANGLE_DOMAIN,
-    process.env.AUTH_SERVICE_URL,
-    process.env.USER_SERVICE_URL,
-    process.env.FACIAL_RECOGNITION_SERVICE_URL,
-    process.env.ENCRYPTION_SERVICE_URL,
-];
-
-// Opciones de CORS
-const corsOptions = {
-    origin: function (origin, callback) {
-        if (whitelist.indexOf(origin) !== -1 || !origin) {
-            // Origin está en la lista blanca o no se ha especificado (solicitudes sin servidor, p.ej. Postman)
-            console.log('Acceso permitido desde el siguiente origen:', origin);
-            callback(null, true);
-        } else {
-            console.log('Intento de acceso no autorizado desde el siguiente origen:', origin);
-            callback(new Error('Not allowed by CORS'));
-        }
-    },
-    credentials: true, // Permitir envío de cookies y headers de autenticación
-};
-
 const userServiceURL = process.env.USER_SERVICE_URL;
 const app = express();
-app.use(cors(corsOptions)); // Habilitar CORS
+// app.use(cors(corsOptions)); // Habilitar CORS
+app.use(cors()); 
 app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(multerErrorHandler);
-
-app.use((req, res, next) => {
-    res.header("Access-Control-Allow-Origin", "*"); // o en lugar de "*", especifica los dominios permitidos
-    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
-    next();
-});
 
 app.get('/', (req, res) => {
     console.log("Solicitud recibida en /");
@@ -101,47 +70,34 @@ app.post('/register', upload.single('faceImage'), async (req, res) => {
 
     console.log(req.file.path + "Este es el archivo");
     console.log(hash3 + "Este es el hash3");
-    // Asume que 'faceImage' es el campo en el que se carga la imagen del rostro
-    if (!req.file) {
-        return res.status(400).send('Imagen de rostro requerida');
+    
+    if (!req.file || !telefono || !usuario || !contrasena) {
+        return res.status(400).send('Los campos obligatorios no están completos o falta la imagen de rostro.');
     }
 
-    // Preparar la imagen para enviar al servicio de reconocimiento facial
+    console.log("Preparando para enviar datos al servicio de reconocimiento facial");
     const formData = new FormData();
     formData.append('file', fs.createReadStream(req.file.path));
-
-    if (!telefono || !usuario || !contrasena) {
-        return res.status(400).send('Los campos obligatorios no están completos.');
-    }
-
-    // Espera a que cada campo sea cifrado antes de continuar
-    const encryptedNombre = await encryptText(String(nombre));
-    const encryptedApellido = await encryptText(String(apellido));
-    const encryptedEmail = await encryptText(String(email));
-    const encryptedUsuario = await encryptText(String(usuario));
-    const encryptedContrasena = await encryptText(String(contrasena));
-    const encryptedTelefono = await encryptText(String(telefono));
-
-    // Envía el token por correo electrónico
-    // sendTokenByEmail(email, rawToken);
     console.log(formData.getHeaders());
-    try {
 
-        // Llamada al servicio de reconocimiento facial para registrar el rostro
-        const responseFace = await axios.post(`${process.env.FACIAL_RECOGNITION_SERVICE_URL}/register`, formData, {
-            headers: {
-                ...formData.getHeaders(),
-            },
-        });
+    axios.post(`${process.env.FACIAL_RECOGNITION_SERVICE_URL}/register`, formData, { headers: { ...formData.getHeaders() } })
+    .then(async (responseFace) => {
+        console.log(`Respuesta del servicio de reconocimiento facial: ${JSON.stringify(responseFace.data)}`);
 
         if (responseFace.status === 201) {
-            const user_id = responseFace.data.user_id;
-            console.log(`Usuario registrado con éxito en el servicio de reconocimiento facial: ${user_id}`);
+            console.log(`Entro para registrar Usuario`);
+            const [encryptedNombre, encryptedApellido, encryptedEmail, encryptedUsuario, encryptedContrasena, encryptedTelefono] = await Promise.all([
+                encryptText(String(nombre)),
+                encryptText(String(apellido)),
+                encryptText(String(email)),
+                encryptText(String(usuario)),
+                encryptText(String(contrasena)),
+                encryptText(String(telefono)),
+            ]);
 
-            // Ahora, cuando llamas a UserService para crear un usuario, incluyes este faceId
             const response = await axios.post(`${userServiceURL}/createUser`, {
-                faceId: user_id,
-                hash3: hash3,
+                faceId: responseFace.data.user_id,
+                hash3,
                 nombre: encryptedNombre,
                 apellido: encryptedApellido,
                 email: encryptedEmail,
@@ -156,16 +112,23 @@ app.post('/register', upload.single('faceImage'), async (req, res) => {
             } else {
                 res.status(response.status).send('Error al registrar usuario');
             }
-
         } else {
-            // Manejo de la respuesta de reconocimiento facial
-            return res.status(500).send('Error al registrar el rostro');
+            res.status(500).send('Error al registrar el rostro');
         }
-
-    } catch (err) {
-        console.error(err);
-        res.status(500).send('Error en el servidor');
-    }
+    })
+    .catch((error) => {
+        console.error("Error al enviar datos de reconocimiento facial:", error.toString());
+        if (error.response) {
+            console.error("Data:", error.response.data);
+            console.error("Status:", error.response.status);
+            console.error("Headers:", error.response.headers);
+        } else if (error.request) {
+            console.error("No response received:", error.request);
+        } else {
+            console.error("Error:", error.message);
+        }
+        res.status(500).send('Error en el servidor.');
+    });
 });
 
 app.post('/login', async (req, res) => {

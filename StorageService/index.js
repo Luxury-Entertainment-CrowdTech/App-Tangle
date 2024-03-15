@@ -3,8 +3,16 @@ const express = require('express');
 const cors = require('cors');
 const multer = require('multer');
 const CryptoJS = require("crypto-js");
+const cloudinary = require('cloudinary').v2;
 const fs = require('fs').promises;
-const { BlobServiceClient } = require('@azure/storage-blob');
+const path = require('path');
+
+// Configura Cloudinary con tus credenciales
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 const app = express();
 const upload = multer({ 
@@ -12,15 +20,21 @@ const upload = multer({
     limits: { fileSize: 200000 * 1024 } // Ejemplo para un límite de 200,000 KB (195 MB)
 });
 
-const AZURE_STORAGE_CONNECTION_STRING = process.env.AZURE_STORAGE_CONNECTION_STRING; // Obtén esto desde el portal de Azure
-const containerName = 'storagetangle';
-const blobServiceClient = BlobServiceClient.fromConnectionString(AZURE_STORAGE_CONNECTION_STRING);
+const corsOptions = {
+    origin: 'https://tangleapp.luxen.club',
+    optionsSuccessStatus: 200,
+};
 
 // Habilitar CORS para todas las rutas
-app.use(cors());
+app.use(cors(corsOptions));
+
+app.get('/', (req, res) => {
+    console.log("Solicitud recibida en /");
+    res.send('StorageServer is running');
+});
 
 app.post('/uploadToAzure', upload.single('file'), async (req, res) => {
-    console.log("Entró al endpoint /uploadToAzure")
+    console.log("Entró al endpoint /upload")
     console.log("Este es el req.file: ", req.file);
     if (!req.file) {
         return res.status(400).send('No file uploaded');
@@ -28,48 +42,34 @@ app.post('/uploadToAzure', upload.single('file'), async (req, res) => {
 
     try {
         const file = req.file;
-
-        // Lee el archivo del sistema de archivos de forma asíncrona
         const fileData = await fs.readFile(file.path);
 
         // Calcula el hash SHA-3 del archivo
         const hashSHA3 = CryptoJS.SHA3(CryptoJS.lib.WordArray.create(fileData), { outputLength: 512 }).toString();
 
-        const azureBlobUrl = await uploadFileToAzureBlob(file);
+        // Extrae el nombre del archivo y la extensión
+        const originalNameWithoutExtension = path.parse(file.originalname).name;
+        const extension = path.parse(file.originalname).ext;
+        const cloudinaryFileName = `${originalNameWithoutExtension}-${Date.now()}${extension}`;
+
+        // Carga el archivo a Cloudinary con el nombre original
+        const result = await cloudinary.uploader.upload(file.path, {
+            resource_type: "auto", // auto detectará el tipo de archivo automáticamente
+            public_id: cloudinaryFileName // Establece el nombre del archivo en Cloudinary
+        });
         
-        console.log("URL del archivo en Azure:", azureBlobUrl);
+        console.log("URL del archivo en Cloudinary:", result.url);
         console.log("Hash SHA-3 del archivo:", hashSHA3);
 
-        res.json({ azureBlobUrl, hashSHA3 });
+        // Elimina el archivo temporal de forma asíncrona
+        await fs.unlink(file.path);
+
+        res.json({ azureBlobUrl : result.url, hashSHA3 });
     } catch (error) {
-        console.error('Error uploading to Azure:', error);
+        console.error('Error uploading to Cloudinary:', error);
         res.status(500).send('Server error');
     }
 });
-
-async function uploadFileToAzureBlob(file) {
-    if (!file || !file.originalname) {
-        throw new Error('No file provided or file is missing name property.');
-    }
-
-    const containerClient = blobServiceClient.getContainerClient(containerName);
-    const blobName = new Date().getTime() + encodeURIComponent(file.originalname); // Usa encodeURIComponent para manejar caracteres especiales
-    const blockBlobClient = containerClient.getBlockBlobClient(blobName);
-
-    // Lee el archivo del sistema de archivos de forma asíncrona
-    const fileData = await fs.readFile(file.path);
-    
-    // Pasa los datos del archivo a uploadData
-    const uploadBlobResponse = await blockBlobClient.uploadData(fileData);
-    console.log(uploadBlobResponse + '\n' + "Este es el uploadBlobResponse");
-    
-    // Establece el nivel de acceso del blob a "anónimo de solo lectura"
-    await blockBlobClient.setAccessTier("Hot");  // Puedes cambiar "Cool" a "Hot" si prefieres ese nivel de acceso
-
-    // Elimina el archivo temporal de forma asíncrona
-    await fs.unlink(file.path);
-    return blockBlobClient.url; // Esta es la URL que guardarás en la base de datos
-}
 
 const PORT = process.env.PORT || 3006;
 app.listen(PORT, () => {

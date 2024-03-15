@@ -25,6 +25,11 @@ app.use(cors({
 
 connectDB();
 
+app.get('/', (req, res) => {
+    console.log("Solicitud recibida en /");
+    res.send('UserServer is running');
+});
+
 app.get('/getProfile', async (req, res) => {
     try {
         const userId = req.query.userId; // Obteniendo el ID del usuario desde la query string

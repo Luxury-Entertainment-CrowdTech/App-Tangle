@@ -4,19 +4,22 @@ const encryptionServiceURL = process.env.ENCRYPTION_SERVICE_URL;
 
 // Crear una instancia de Axios con un agente HTTPS que ignora los errores de certificado SSL
 const axiosInstance = axios.create({
-    httpsAgent: new https.Agent({  
-        rejectUnauthorized: false
-    })
-});
+    httpsAgent: new https.Agent({
+      rejectUnauthorized: process.env.NODE_ENV === 'production'
+    }),
+    timeout: 300000, // Tiempo de espera de 10 segundos
+  });
 
 async function encryptText(text) {
     console.log('Request body for encryption:', text);
     try {
-        const response = await axiosInstance.post(`${encryptionServiceURL}/Encryption/encrypt`, JSON.stringify(text), {
+        const response = await axiosInstance.post(`${encryptionServiceURL}/Encryption/encrypt`, {
+            PlainText: text
+          }, {
             headers: { 'Content-Type': 'application/json' }
-        });
+          });
 
-        return response.data; // El texto cifrado
+        return response.data.encryptedText;
     } catch (error) {
         console.error('Error al encriptar el texto:', error);
         throw error;
@@ -30,14 +33,18 @@ async function decryptText(encryptedText) {
         const requestData = typeof encryptedText === 'string' ? encryptedText : JSON.stringify(encryptedText);
 
         // Realizar la solicitud POST
-        const response = await axiosInstance.post(`${encryptionServiceURL}/Encryption/decrypt`, requestData, { 
-            headers: { 'Content-Type': 'application/json' } 
-        });
+        // const response = await axiosInstance.post(`${encryptionServiceURL}/Encryption/decrypt`, requestData, { 
+        //     headers: { 'Content-Type': 'application/json' } 
+        // });
+        const response = await axiosInstance.post(`${encryptionServiceURL}/Encryption/decrypt`, {
+            CipherTextString: encryptedText
+          }, {
+            headers: { 'Content-Type': 'application/json' }
+          });
 
-        // Registro para depuración
-        console.log('Decryption response:', response.data);
+          console.log('Decryption response:', response.data.plainText);
+          return String(response.data.plainText);
 
-        return String(response.data); // El texto desencriptado
     } catch (error) {
         // Registro detallado del error
         console.error('Error al desencriptar el texto:', error);

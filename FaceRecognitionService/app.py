@@ -9,7 +9,7 @@ from flask import Flask, jsonify, request
 from pymongo import MongoClient
 
 # Configuración de logging
-log_dir = '/var/log/facerecognition'
+log_dir = os.path.expanduser('~/facerecognition_logs')
 if not os.path.exists(log_dir):
     os.makedirs(log_dir)
 
@@ -53,6 +53,10 @@ if '@' in mongo_uri:
 else:
     logger.info(f"Iniciando FaceRecognitionService en el entorno: {environment}")
     logger.info(f"Conectado a MongoDB en: {mongo_uri} (Local)")
+
+@app.route('/', methods=['GET'])
+def home():
+    return jsonify({'message': 'Bienvenido al microservicio de reconocimiento facial.'}), 200
 
 @app.route('/register', methods=['POST'])
 def register():
