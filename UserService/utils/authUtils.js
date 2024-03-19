@@ -5,19 +5,19 @@ const encryptionServiceURL = process.env.ENCRYPTION_SERVICE_URL;
 // Crear una instancia de Axios con un agente HTTPS que ignora los errores de certificado SSL
 const axiosInstance = axios.create({
     httpsAgent: new https.Agent({
-      rejectUnauthorized: process.env.NODE_ENV === 'production'
+        rejectUnauthorized: process.env.NODE_ENV === 'production'
     }),
     timeout: 300000, // Tiempo de espera de 10 segundos
-  });
+});
 
 async function encryptText(text) {
     console.log('Request body for encryption:', text);
     try {
         const response = await axiosInstance.post(`${encryptionServiceURL}/Encryption/encrypt`, {
             PlainText: text
-          }, {
+        }, {
             headers: { 'Content-Type': 'application/json' }
-          });
+        });
 
         return response.data.encryptedText;
     } catch (error) {
@@ -38,12 +38,12 @@ async function decryptText(encryptedText) {
         // });
         const response = await axiosInstance.post(`${encryptionServiceURL}/Encryption/decrypt`, {
             CipherTextString: encryptedText
-          }, {
+        }, {
             headers: { 'Content-Type': 'application/json' }
-          });
+        });
 
-          console.log('Decryption response:', response.data.plainText);
-          return String(response.data.plainText);
+        console.log('Decryption response:', response.data.plainText);
+        return String(response.data.plainText);
 
     } catch (error) {
         // Registro detallado del error

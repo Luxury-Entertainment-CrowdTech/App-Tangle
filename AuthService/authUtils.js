@@ -9,10 +9,10 @@ const emailServiceURL = process.env.EMAIL_SERVICE_URL;
 // Crea una instancia de Axios específicamente para entorno de producción o desarrollo
 const axiosInstance = axios.create({
     httpsAgent: new https.Agent({
-      rejectUnauthorized: process.env.NODE_ENV === 'production'
+        rejectUnauthorized: process.env.NODE_ENV === 'production'
     }),
     timeout: 300000, // Tiempo de espera de 10 segundos
-  });
+});
 
 // Función para generar un token aleatorio
 function generateSecureToken() {
@@ -61,50 +61,36 @@ async function encryptText(text) {
     console.log('Request body for encryption:', text);
     try {
         const response = await axiosInstance.post(`${process.env.ENCRYPTION_SERVICE_URL}/Encryption/encrypt`, {
-          PlainText: text
+            PlainText: text
         }, {
-          headers: { 'Content-Type': 'application/json' }
+            headers: { 'Content-Type': 'application/json' }
         });
         // console.log('Encryption response:', response.data.encryptedText);
         return response.data.encryptedText;
-      } catch (error) {
+    } catch (error) {
         console.error('Error during encryption:', error);
         // Manejo específico de errores, puede ser adaptado según necesidades
         if (error.response) {
-          console.error('Error data:', error.response.data);
+            console.error('Error data:', error.response.data);
         }
         throw new Error('Failed to encrypt text');
-      }
+    }
 }
 
 async function decryptText(encryptedText) {
     try {
         const response = await axiosInstance.post(`${process.env.ENCRYPTION_SERVICE_URL}/Encryption/decrypt`, {
-          CipherTextString: encryptedText
+            CipherTextString: encryptedText
         }, {
-          headers: { 'Content-Type': 'application/json' }
+            headers: { 'Content-Type': 'application/json' }
         });
         console.log('Decryption response:', response.data.plainText);
         return response.data.plainText;
-      } catch (error) {
+    } catch (error) {
         console.error('Error during decryption:', error);
         throw new Error('Failed to decrypt text');
-      }
+    }
 }
-
-// Ejemplo de cómo utilizar las funciones
-// async function runEncryptionDecryptionTest() {
-//     try {
-//       const encryptedText = await encryptText('Hello, World!');
-//     //   console.log('Encrypted text:', encryptedText);
-//       const decryptedText = await decryptText(encryptedText);
-//       console.log('Decrypted text:', decryptedText);
-//     } catch (error) {
-//       console.error('An error occurred:', error.message);
-//     }
-//   }
-  
-// runEncryptionDecryptionTest();
 
 module.exports = {
     generateSecureToken,

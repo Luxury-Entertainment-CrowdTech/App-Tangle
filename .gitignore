@@ -29,6 +29,36 @@ StorageService/uploads/*
 **/*.sln
 **/*.sw?
 
+# Ignorar directorios de compilación de .NET
+**/[Bb]in/
+**/[Oo]bj/
+**/[Ll]ogs/
+**/[Tt]est[Rr]esult*/
+
+# Archivos generados por la compilación de .NET
+*.user
+*.userosscache
+*.suo
+*.cache
+*.csproj.user
+*.dll
+*.pdb
+*.exe
+
+# Archivos de configuración de Visual Studio y Rider
+.vs/
+.idea/
+
+# Archivos y carpetas específicas de tu proyecto
+HomomorphicEncryptionService/.vs/
+HomomorphicEncryptionService/bin/
+HomomorphicEncryptionService/obj/
+HomomorphicEncryptionService/*.user
+HomomorphicEncryptionService/*.userosscache
+HomomorphicEncryptionService/*.suo
+HomomorphicEncryptionService/*.cache
+HomomorphicEncryptionService/*.csproj.user
+
 # Otros específicos de Vue.js
 .DS_Store
 /dist

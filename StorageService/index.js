@@ -15,8 +15,8 @@ cloudinary.config({
 });
 
 const app = express();
-const upload = multer({ 
-    dest: 'uploads/', 
+const upload = multer({
+    dest: 'uploads/',
     limits: { fileSize: 200000 * 1024 } // Ejemplo para un límite de 200,000 KB (195 MB)
 });
 
@@ -57,14 +57,14 @@ app.post('/uploadToAzure', upload.single('file'), async (req, res) => {
             resource_type: "auto", // auto detectará el tipo de archivo automáticamente
             public_id: cloudinaryFileName // Establece el nombre del archivo en Cloudinary
         });
-        
+
         console.log("URL del archivo en Cloudinary:", result.url);
         console.log("Hash SHA-3 del archivo:", hashSHA3);
 
         // Elimina el archivo temporal de forma asíncrona
         await fs.unlink(file.path);
 
-        res.json({ azureBlobUrl : result.url, hashSHA3 });
+        res.json({ azureBlobUrl: result.url, hashSHA3 });
     } catch (error) {
         console.error('Error uploading to Cloudinary:', error);
         res.status(500).send('Server error');
