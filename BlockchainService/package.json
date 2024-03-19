@@ -15,7 +15,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@iota/sdk": "^1.1.4",
+    "@iota/sdk": "^1.1.5",
     "axios": "^1.6.5",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
