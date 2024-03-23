@@ -5,6 +5,9 @@ const transaccionesTangleSchema = new mongoose.Schema({
     usuarioId: { type: mongoose.Schema.Types.ObjectId, ref: 'Usuario' },
     hashSHA3: String,
     blockId: String,
+    primerBlockId: String,
+    orden: Number,
+    segment: String,
     fechaTransaccion: { type: Date, default: Date.now },
     protocolVersion: Number,
     parents: [String],  // Suponiendo que es un array de strings

@@ -6,7 +6,6 @@ const connectDB = require('./db');
 const TransaccionesTangle = require('./models/TransaccionesTangle'); // Asegúrate de ajustar la ruta
 const axios = require('axios');
 const userServiceURL = process.env.USER_SERVICE_URL;
-const fs = require('fs');
 
 const app = express();
 app.use(express.json());
@@ -34,19 +33,6 @@ app.get('/', (req, res) => {
     res.status(200).send('BlockchainService is running');
 });
 
-function divideData(data, segmentSize) {
-  // Conviérte la data a Buffer para manejo uniforme.
-  const buffer = Buffer.isBuffer(data) ? data : Buffer.from(data);
-  const segments = [];
-
-  for (let i = 0; i < buffer.length; i += segmentSize) {
-    segments.push(buffer.slice(i, i + segmentSize));
-  }
-
-  return segments;
-}
-
-
 app.post('/upload', async (req, res) => {
     const { hash, usuarioId, azureBlobUrl } = req.body;
     console.log(usuarioId + '\n' + "Este es el usuario");
@@ -57,79 +43,55 @@ app.post('/upload', async (req, res) => {
         return res.status(400).send('Faltan datos requeridos');
     }
 
+    const options = {
+        tag: utf8ToHex('Hello'),
+        data: utf8ToHex(hash)
+    };
+
     try {
-        //const segmentSize = 4294967296;
-        const segmentSize = 5
-	const segments = await divideData(hash, segmentSize);
-        //console.log(`la data se dividió en ${segments.length} segmentos.`);
-        let primerBlockId = null;
-        const resultados = []; 
-    	await Promise.all(segments.map(async (segment, index) => {
-            const options = {
-                tag: utf8ToHex('Hello'),
-                data: utf8ToHex(segment) 
-            };
-    	  
-            const mnemonic = Utils.generateMnemonic();
-            const secretManager = { mnemonic };
+        const mnemonic = Utils.generateMnemonic();
+        const secretManager = { mnemonic };
 
-            // Crear y enviar el bloque con la carga útil
-            const blockIdAndBlock = await client.buildAndPostBlock(secretManager, options);
-            console.log('Block sent: ', blockIdAndBlock, '\n');
+        // Crear y enviar el bloque con la carga útil
+        const blockIdAndBlock = await client.buildAndPostBlock(secretManager, options);
+        console.log('Block sent: ', blockIdAndBlock, '\n');
 
-            const fetchedBlock = await client.getBlock(blockIdAndBlock[0]);
-            console.log('Block data: ', fetchedBlock);
+        const fetchedBlock = await client.getBlock(blockIdAndBlock[0]);
+        console.log('Block data: ', fetchedBlock);
 
-            const block = new Block();
-            block.protocolVersion = fetchedBlock.protocolVersion;
-            block.parents = fetchedBlock.parents;
-            block.payload = fetchedBlock.payload;
-            block.nonce = fetchedBlock.nonce;
+        const block = new Block();
+        block.protocolVersion = fetchedBlock.protocolVersion;
+        block.parents = fetchedBlock.parents;
+        block.payload = fetchedBlock.payload;
+        block.nonce = fetchedBlock.nonce;
 
-            const blockId = await client.postBlock(block);
-            console.log('Block ID:', blockId);
-                
-	    if (index === 0) {
-                primerBlockId = blockId;
-            }
-                
-	    // Crear una nueva transacción en MongoDB
-            const nuevaTransaccion = new TransaccionesTangle({
-                usuarioId,
-                hashSHA3: hash,
-                blockId,
-                primerBlockId,
-                orden: index,
-		segment,
-                protocolVersion: block.protocolVersion,
-                parents: block.parents,
-                payloadType: block.payload.type,
-                payloadTag: block.payload.tag,
-                payloadData: block.payload.data,
-                nonce: block.nonce,
-                archivoCifradoURL: azureBlobUrl
-            });
+        const blockId = await client.postBlock(block);
+        console.log('Block ID:', blockId);
 
-            await nuevaTransaccion.save();
-	    console.log(nuevaTransaccion);	
-            resultados.push({ exito:true, blockId,  mensaje: 'Transacción guardada con éxito.:'});
-        }));
-        const blockId = resultados.map(transaccion => transaccion.blockId);
-	res.json({ blockId });
+        // Crear una nueva transacción en MongoDB
+        const nuevaTransaccion = new TransaccionesTangle({
+            usuarioId,
+            hashSHA3: hash,
+            blockId,
+            protocolVersion: block.protocolVersion,
+            parents: block.parents,
+            payloadType: block.payload.type,
+            payloadTag: block.payload.tag,
+            payloadData: block.payload.data,
+            nonce: block.nonce,
+            archivoCifradoURL: azureBlobUrl
+        });
+
+        await nuevaTransaccion.save();
+        res.json({ blockId });
     } catch (iotaError) {
         console.error('Error sending message to the Tangle:', iotaError);
         res.status(500).send('Server error');
     }
 });
 
-function combineData(segments) {
-  // Concatena los segmentos extraidos de db Tangle
-  const combinedBase64 = segments.join('');
-  return combinedBase64;
-}
-
-
 app.get('/retrieve/:blockId', async (req, res) => {
+    console.log("Entro a retrieve");
     const { blockId } = req.params;
     console.log(blockId + '\n' + "Este es el blockId");
 
@@ -137,44 +99,30 @@ app.get('/retrieve/:blockId', async (req, res) => {
         const transaccion = await TransaccionesTangle.findOne({ blockId });
         if (!transaccion) {
             return res.status(404).send('Transacción no encontrada');
-        } 
-	
-	// Imprimir el primerBlockId para verificar que esta correctamente
-        console.log(`El primerBlockId de la transacción es: ${transaccion.primerBlockId}`);
+        }
 
-        // Buscamos todas las transacciones asociadas.
-        const transaccionesRelacionadas = await TransaccionesTangle.find({ primerBlockId: transaccion.primerBlockId });
-           
-        //Ordenar las transacciones por 'orden' para asegurarnos de que las procesamos bien desde el inicio
-	const transaccionesOrdenadas = transaccionesRelacionadas.sort((a, b) => a.orden - b.orden);
-        console.log(transaccionesOrdenadas);
-        
-	// Recuperar información del bloque de la red Tangle para cada transacción relacionada
-        let encryptedFileDataSegments = [];
-	for (let t of transaccionesOrdenadas) {
-	    const fetchedBlock = await retrieveBlockFromNodesParallel(t.blockId);
-	    
-	    if (!fetchedBlock || !(fetchedBlock.payload instanceof TaggedDataPayload)) {
-	        console.log(`Invalid block payload or block not found for blockId: ${t.blockId}`);
-	    continue;
-	    } 
-	    const payload = fetchedBlock.payload;
-            encryptedFileDataSegments.push(hexToUtf8(payload.data));
-        } 
-        //Llamamos la funcion para unir los segmentos
-	//console.log(`Data desencriptada: ${encryptedFileDataSegments}`)
-        const encryptedFileDataBase64 = combineData(encryptedFileDataSegments)
-        //console.log(`Data recuperada base 64: ${encryptedFileDataBase64}`)
-  	// Solicitar información del usuario al UserService
-	const userInfoResponse = await axios.get(`${userServiceURL}/getUserInfo/${transaccion.usuarioId}`);
-        const userInfo = userInfoResponse.data; 
-            
-	const responseData = {
+        // Recuperar información del bloque de la red Tangle
+        const fetchedBlock = await retrieveBlockFromNodesParallel(blockId);
+
+        if (!fetchedBlock || !(fetchedBlock.payload instanceof TaggedDataPayload)) {
+            return res.status(400).send('Invalid block payload or block not found');
+        }
+
+        const payload = fetchedBlock.payload;
+        const encryptedFileDataBase64 = hexToUtf8(payload.data);
+
+        // Solicitar información del usuario al UserService
+        const userInfoResponse = await axios.get(`${userServiceURL}/getUserInfo/${transaccion.usuarioId}`);
+        const userInfo = userInfoResponse.data;
+
+        // Crear un objeto que contenga tanto los datos de la base de datos como los datos de Tangle
+        const responseData = {
             encryptedFileData: encryptedFileDataBase64,
             transaccion,
             userInfo
         };
-	res.send(responseData);
+
+        res.send(responseData);
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Server error');
@@ -268,5 +216,3 @@ async function retrieveBlockFromNodesParallel(blockId) {
     }
     return fetchedBlock;
 }
-
-
