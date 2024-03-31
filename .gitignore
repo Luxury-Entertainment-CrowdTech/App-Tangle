@@ -29,12 +29,6 @@ StorageService/uploads/*
 **/*.sln
 **/*.sw?
 
-# Ignorar directorios de compilación de .NET
-**/[Bb]in/
-**/[Oo]bj/
-**/[Ll]ogs/
-**/[Tt]est[Rr]esult*/
-
 # Archivos generados por la compilación de .NET
 *.user
 *.userosscache
